@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Real-Time Object Detection with Speech</title>
+</head>
+<body>
+  <h1>Real-Time Object Detection</h1>
+  <video id="webcam" width="640" height="480" autoplay></video>
+  <canvas id="output" width="640" height="480"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+  <script>
+    async function setupCamera() {
+      const constraints = { video: true, audio: false };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const video = document.getElementById('webcam');
+      video.srcObject = stream;
+
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          resolve(video);
+        };
+      });
+    }
+
+    async function init() {
+      const video = await setupCamera();
+      video.play();
+
+      const model = await cocoSsd.load();
+      detectFrame(video, model);
+    }
+
+    async function detectFrame(video, model) {
+      const canvas = document.getElementById('output');
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      async function animate() {
+        const predictions = await model.detect(video);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        predictions.forEach((prediction) => {
+          context.beginPath();
+          context.rect(
+            prediction.bbox[0],
+            prediction.bbox[1],
+            prediction.bbox[2],
+            prediction.bbox[3]
+          );
+          context.lineWidth = 2;
+          context.strokeStyle = 'red';
+          context.fillStyle = 'red';
+          context.stroke();
+          context.fillText(`${prediction.class} (${Math.round(prediction.score * 100)}%)`, prediction.bbox[0], prediction.bbox[1]);
+          
+          // Speak the detected object name
+          speakDetectedObject(`I see a ${prediction.class}`);
+        });
+
+        requestAnimationFrame(animate);
+      }
+      animate();
+    }
+
+    function speakDetectedObject(text) {
+      const synth = window.speechSynthesis;
+      const utterance = new SpeechSynthesisUtterance(text);
+      synth.speak(utterance);
+    }
+
+    // Initialize the application
+    init();
+  </script>
+</body>
+</html
